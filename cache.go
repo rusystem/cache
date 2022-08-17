@@ -10,13 +10,12 @@ import (
 
 type Cache struct {
 	info map[string]interface{}
-	mu   *sync.RWMutex
+	mu   sync.RWMutex
 }
 
 func New() *Cache {
 	return &Cache{
-		make(map[string]interface{}),
-		new(sync.RWMutex),
+		info: make(map[string]interface{}),
 	}
 }
 
@@ -26,7 +25,7 @@ func (c *Cache) ttl(key string, ttl time.Duration) {
 		case <-time.After(ttl):
 			err := c.Delete(key)
 			if err != nil {
-				log.Fatal()
+				log.Fatal(err)
 			}
 			return
 		}
