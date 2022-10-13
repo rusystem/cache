@@ -2,65 +2,78 @@ package cache
 
 import (
 	"errors"
-	"fmt"
-	"log"
 	"sync"
 	"time"
 )
 
-type Cache struct {
-	info map[string]interface{}
-	mu   sync.RWMutex
+var ErrItemNotFound = errors.New("cache: item not found")
+
+type item struct {
+	value     interface{}
+	createdAt int64
+	ttl       int64
 }
 
-func New() *Cache {
-	return &Cache{
-		info: make(map[string]interface{}),
-	}
+type MemoryCache struct {
+	cache map[interface{}]*item
+	sync.RWMutex
 }
 
-func (c *Cache) ttl(key string, ttl time.Duration) {
+func New() *MemoryCache {
+	c := &MemoryCache{cache: make(map[interface{}]*item)}
+	go c.setTtlTimer()
+
+	return c
+}
+
+func (c *MemoryCache) setTtlTimer() {
 	for {
-		select {
-		case <-time.After(ttl):
-			err := c.Delete(key)
-			if err != nil {
-				log.Fatal(err)
+		c.Lock()
+		for k, v := range c.cache {
+			if time.Now().Unix()-v.createdAt > v.ttl {
+				delete(c.cache, k)
 			}
-			return
 		}
+		c.Unlock()
+
+		<-time.After(time.Second)
 	}
 }
 
-func (c *Cache) Delete(key string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *MemoryCache) Delete(key interface{}) error {
+	c.Lock()
+	defer c.Unlock()
 
-	if _, ok := c.info[key]; !ok {
-		return errors.New(fmt.Sprintf("Not found value by key=%s", key))
+	if _, ok := c.cache[key]; !ok {
+		return ErrItemNotFound
 	}
-	delete(c.info, key)
+	delete(c.cache, key)
 
 	return nil
 }
 
-func (c *Cache) Get(key string) (interface{}, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *MemoryCache) Get(key interface{}) (interface{}, error) {
+	c.RLock()
+	defer c.RUnlock()
 
-	_, ok := c.info[key]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("Not found value by key=%s", key))
+	item, ex := c.cache[key]
+
+	if !ex {
+		return nil, ErrItemNotFound
 	}
 
-	return c.info[key], nil
+	return item.value, nil
 }
 
-func (c *Cache) Set(key string, value interface{}, ttl time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *MemoryCache) Set(key, value interface{}, ttl int64) error {
+	c.Lock()
+	defer c.Unlock()
 
-	c.info[key] = value
+	c.cache[key] = &item{
+		value:     value,
+		createdAt: time.Now().Unix(),
+		ttl:       ttl,
+	}
 
-	go c.ttl(key, ttl)
+	return nil
 }
