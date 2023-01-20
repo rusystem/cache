@@ -1,4 +1,5 @@
 # Getting cache
+
 ``` 
 go get github.com/rusystem/cache
 ```
@@ -13,19 +14,24 @@ import "fmt"
 func main() {
     cache := cache.New()
 
-    cache.Set("userId", 42, time.Second * 5)
-    userId := cache.Get("userId")
+    if err := cache.Set("userId", 42, 5); err != nil { // 5 - time in seconds
+        log.Fatal(err)
+    }
+    
+    userId, err := cache.Get("userId")
+    if err == nil {
+        i := userId.(int)
+    }
 
-    fmt.Println(userId)
+    fmt.Println(i)
 
-    cache.Delete("userId")
-    userId := cache.Get("userId")
-
-    fmt.Println(userId)
+    if err = cache.Delete("userId"); err != nil {
+        log.Fatal(err)
+    }
 }
 ````
 
-``Set(key string, value interface{}, ttl time.Duration)`` - writing value to the cache by key, with time to live
+``Set(key interface{}, value interface{}, ttl int64)`` - writing value to the cache by key, with time to live
 
 ``Get(key string)`` - reading value from the cache by key
 
