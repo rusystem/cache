@@ -31,7 +31,7 @@ func main() {
 }
 ````
 
-``Set(key interface{}, value interface{}, ttl int64)`` - writing value to the cache by key, with time to live
+``Set(key interface{}, value interface{}, ttl int64)`` - writing value to the cache by key, with time to live, if you do not delete the value, then you need to take the ttl value as zero.
 
 ``Get(key string)`` - reading value from the cache by key
 

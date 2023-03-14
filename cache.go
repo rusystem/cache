@@ -30,6 +30,10 @@ func (c *MemoryCache) setTtlTimer() {
 	for {
 		c.Lock()
 		for k, v := range c.cache {
+			if v.ttl == 0 {
+				continue
+			}
+
 			if time.Now().Unix()-v.createdAt > v.ttl {
 				delete(c.cache, k)
 			}
